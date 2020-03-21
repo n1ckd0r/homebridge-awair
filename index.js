@@ -123,6 +123,9 @@ Awair.prototype = {
 							// PM2.5 (ug/m^3)
 							that.airQualityService
 								.setCharacteristic(Characteristic.PM2_5Density, parseFloat(sensors[sensor]));
+
+							that.airQualityService.setCharacteristic(Characteristic.AirParticulateDensity, parseFloat(sensors[sensor]));
+							that.airQualityService.setCharacteristic(Characteristic.AirParticulateSize, 0);
 							break;
 						case "pm10":
 							// PM10 (ug/m^3)
@@ -503,7 +506,9 @@ Awair.prototype = {
 			.setCharacteristic(Characteristic.AirQuality, "--")
 			.setCharacteristic(Characteristic.VOCDensity, "--")
 			.setCharacteristic(Characteristic.PM10Density, "--")
-			.setCharacteristic(Characteristic.PM2_5Density, "--");
+			.setCharacteristic(Characteristic.PM2_5Density, "--")
+			.setCharacteristic(Characteristic.AirParticulateDensity, "--")
+			.setCharacteristic(Characteristic.AirParticulateSize, "--");
 		airQualityService
 			.getCharacteristic(Characteristic.VOCDensity)
 			.setProps({
