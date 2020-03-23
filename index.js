@@ -535,8 +535,8 @@ Awair.prototype = {
 			.setCharacteristic(Characteristic.VOCDensity, "--")
 			.setCharacteristic(Characteristic.PM10Density, "--")
 			.setCharacteristic(Characteristic.PM2_5Density, "--")
-			.setCharacteristic(Characteristic.AirParticulateDensity, "--")
-			.setCharacteristic(Characteristic.AirParticulateSize, "--");
+			.addCharacteristic(Characteristic.AirParticulateDensity, "--")
+			.addCharacteristic(Characteristic.AirParticulateSize, "--");
 		airQualityService
 			.getCharacteristic(Characteristic.VOCDensity)
 			.setProps({
