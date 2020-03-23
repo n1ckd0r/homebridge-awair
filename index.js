@@ -530,9 +530,8 @@ Awair.prototype = {
 		services.push(informationService);
 		
 		var airQualityService = new Service.AirQualitySensor();
-		airQualityService
-			.addCharacteristic(Characteristic.AirParticulateDensity)
-			.addCharacteristic(Characteristic.AirParticulateSize);
+		airQualityService.addCharacteristic(Characteristic.AirParticulateDensity);
+		airQualityService.addCharacteristic(Characteristic.AirParticulateSize);
 		airQualityService
 			.setCharacteristic(Characteristic.AirQuality, "--")
 			.setCharacteristic(Characteristic.VOCDensity, "--")
