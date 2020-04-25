@@ -21,7 +21,7 @@ function Awair(log, config) {
 	this.carbonDioxideThreshold = Number(config["carbonDioxideThreshold"]) || 0; // ppm, 0 = OFF
 	this.carbonDioxideThresholdOff = Number(config["carbonDioxideThresholdOff"]) || Number(this.carbonDioxideThreshold); // ppm, same as carbonDioxideThreshold by default, should be less than or equal to carbonDioxideThreshold
 	this.vocMW = Number(config["voc_mixture_mw"]) || 72.66578273019740; // Molecular Weight (g/mol) of a reference VOC gas or mixture
-	this.airQualityMethod = config["air_quality_method"] || "awair-score"; // awair-score, aqi, nowcast-aqi
+	this.airQualityMethod = config["air_quality_method"] || "voc-dust"; // awair-score, aqi, nowcast-aqi
 	this.userType = config["userType"] || "users/self"; // users/self, orgs/###
 	this.polling_interval = Number(config["polling_interval"]) || 900; // seconds (default: 15 mins)
 	this.limit = Number(config["limit"]) || 12; // consecutive 10 second
@@ -53,10 +53,7 @@ Awair.prototype = {
 					.reduce((a, b) => a.concat(b))
 					.reduce((a, b) => {a[b.comp] = a[b.comp] ? 0.5*(a[b.comp] + b.value) : b.value; return a}, {});
 				
-				var score = data.reduce((a, b) => {return a + b.score}, 0) / data.length;
 				
-				that.airQualityService
-					.setCharacteristic(Characteristic.AirQuality, that.convertScore(score));
 				that.airQualityService.isPrimaryService = true;
 				if (that.devType == "awair-mint") {
 					that.airQualityService.linkedServices = [that.humidityService, that.temperatureService, that.lightLevelService];
@@ -72,7 +69,7 @@ Awair.prototype = {
 				var atmos = 1;
 				
 				if(that.logging){that.log("[" + that.serial + "] " + that.endpoint + ": " + JSON.stringify(sensors) + ", score: " + score)};
-				
+				var voc = 0, dust = 0;
 				for (var sensor in sensors) {
 					switch (sensor) {
 						case "temp":
@@ -135,7 +132,7 @@ Awair.prototype = {
 							}
 							break;
 						case "voc":
-							var voc = parseFloat(sensors[sensor]);
+							voc = parseFloat(sensors[sensor]);
 							var tvoc = that.convertChemicals(voc, atmos, temp);
 							if(that.logging){that.log("[" + that.serial + "]: voc (" + voc + " ppb) => tvoc (" + tvoc + " ug/m^3)")};
 							// Chemicals (ug/m^3)
@@ -149,8 +146,9 @@ Awair.prototype = {
 							break;
 						case "pm25":
 							// PM2.5 (ug/m^3)
+							dust = parseFloat(sensors[sensor]);
 							that.airQualityService
-								.setCharacteristic(Characteristic.PM2_5Density, parseFloat(sensors[sensor]));
+								.setCharacteristic(Characteristic.PM2_5Density, dust);
 
 							that.airQualityService.setCharacteristic(Characteristic.AirParticulateDensity, parseFloat(sensors[sensor]));
 							that.airQualityService.setCharacteristic(Characteristic.AirParticulateSize, 0);
@@ -175,6 +173,11 @@ Awair.prototype = {
 							break;
 					}
 				}
+
+				var score = data.reduce((a, b) => {return a + b.score}, 0) / data.length;
+				
+				that.airQualityService
+					.setCharacteristic(Characteristic.AirQuality, that.convertScore(score, voc, dust));
 			})
 			.catch(function(err) {
 				if(that.logging){that.log("[" + that.serial + "] " + err)};
@@ -211,11 +214,26 @@ Awair.prototype = {
 		return tvoc;
 	},
 	
-	convertScore: function(score) {
+	convertScore: function(score, voc, dust) {
 		var that = this;
 		var method = that.airQualityMethod;
 		
 		switch (method) {
+			case "voc-dust":
+				if (voc < 333 && dust < 15) {
+					return 1; // EXCELLENT
+				} else if (voc < 1000 && dust < 35) {
+					return 2; // GOOD
+				} else if (voc < 3333 && dust < 55) {
+					return 3; // FAIR
+				} else if (voc < 8332 && dust < 75) {
+					return 4; // INFERIOR
+				} else if (voc >= 8332 && dust >= 75) {
+					return 5; // POOR
+				} else {
+					return 0; // Error
+				}
+				break;
 			case "awair-score":
 				var score = parseFloat(score);
 				if (score >= 90) {
